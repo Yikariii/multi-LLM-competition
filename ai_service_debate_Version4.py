@@ -1,6 +1,4 @@
 import openai  # For ChatGPT (OpenAI)
-import requests
-
 try:
     import google.generativeai as genai  # For Gemini (Google)
 except ImportError:
@@ -16,10 +14,10 @@ class AIService:
 class ChatGPTService(AIService):
     def __init__(self, api_key):
         super().__init__("ChatGPT (OpenAI)")
-        openai.api_key = api_key
+        self.client = openai.OpenAI(api_key=api_key)
 
     def debate(self, topic, background):
-        response = openai.ChatCompletion.create(
+        response = self.client.chat.completions.create(
             model="gpt-4o",
             messages=[
                 {"role": "system", "content":
@@ -30,7 +28,7 @@ class ChatGPTService(AIService):
                 {"role": "user", "content": f"Debate why the user should buy your AI service membership instead of Gemini or Copilot. Topic: {topic}"}
             ]
         )
-        return response['choices'][0]['message']['content']
+        return response.choices[0].message.content
 
 class GeminiService(AIService):
     def __init__(self, api_key):
@@ -38,7 +36,11 @@ class GeminiService(AIService):
             raise RuntimeError("Google Generative AI SDK not installed")
         super().__init__("Gemini (Google)")
         genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel('gemini-pro')
+        # List available models to avoid 404
+        available_models = [m.name for m in genai.list_models()]
+        # Try 'models/gemini-1.5-pro-latest' if 'gemini-pro' does not work
+        model_name = "models/gemini-1.5-pro-latest" if "models/gemini-1.5-pro-latest" in available_models else "gemini-pro"
+        self.model = genai.GenerativeModel(model_name)
 
     def debate(self, topic, background):
         response = self.model.generate_content(
